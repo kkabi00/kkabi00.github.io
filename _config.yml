@@ -26,14 +26,14 @@ blog:
 
 # Author info
 author:
-  fullname                  : Your Name
+  fullname                  : Gavi Lim
   rss                       : true # generate RSS feed and show it's icon in header
-  mail                      : your@email.com # change to your e-mail address
-  twitter                   : twitter-user-name
+  mail                      : gocalm00@email.com # change to your e-mail address
+  twitter                   : twitter-user-name #nope
   github                    : github-user-name
-  youtube                   : youtube-user-name
+  youtube                   : youtube-user-name #nope
   stackoverflow             : stackoverflow-user-name
-  disqus                    : dactl # your disqus site name
+  disqus                    : Gavi Lim's HCI story # your disqus site name
   google_analytics          : # 'UA-XXXXXXXX-X'
   photo                     : "uploads/me2.png"
   photo2x                   : "uploads/me.png"
