@@ -33,7 +33,7 @@ author:
   github                    : github-user-name
   youtube                   : youtube-user-name #nope
   stackoverflow             : stackoverflow-user-name
-  disqus                    :  # your disqus site name
+  disqus                    : # your disqus site name
   google_analytics          : # 'UA-XXXXXXXX-X'
   photo                     : "uploads/me2.png"
   photo2x                   : "uploads/me.png"
