@@ -5,12 +5,12 @@ url                          : "https://kkabi00.github.io" # the base hostname &
                                   # `http://<username>.github.io` - for GitHub
 
 blog:
-  title                      : dactl
-  description                  : >
-                               this should contain a proper description
+  title                      : Tech for Humans
+  description                  : > 
+                               Ideas for technology that listens, helps, and connects — collected along the journey of becoming an HCI researcher.
 
 # Layout configuration
-  logo_path                  : "assets/img/dactl.svg" # path to logo file
+  logo_path                  : "assets/img/blog_logo_fox.svg" # path to logo file
   search_path                : # "yourgitusername.github.io"
                                # needed for searchbox in archive page
   hero_layout                : true # turn on hero layout for blog and posts
