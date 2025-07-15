@@ -18,11 +18,13 @@ published: true
 
 {% include page/title.html title=page.title subtitle=page_subtitle %}
 
-## Hello I'm HCI reasearcher Gavi in Korea :)
+## Brightening people, brightening the world.
 
-Be right Be humble. This is means of my name.
-I'm interested in Computer Science, Sociology, and Cognitive Science.
-If you wanna 'compile' me, please contact to gocalm00@gmail.com.
+Hi, I’m Gavi — a researcher in HCI who dreams of living like a daisy.
+The daisy, meaning “day’s eye,” reminds me that everyone carries a sun within.
+Through my work, I hope to brighten that light in people — gently, thoughtfully.
+Thanks for stopping by. Hope to cross paths at a conference someday!
+
 
 
 </div>
