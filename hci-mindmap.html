@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  svg {
+    width: 100%;
+    height: 100vh;
+  }
+  .node circle {
+    fill: #999;
+  }
+  .node text {
+    font-size: 12px;
+    fill: #000;
+  }
+  .link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
+  }
+</style>
+<body>
+<svg></svg>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const data = {"name": "HCI", "children": [{"name": "의의", "children": [{"name": "학문적 의의", "children": [{"name": "다학제간연구(공학/인문학/디자인/비즈니스 등)"}]}, {"name": "실용적 의의", "children": [{"name": "디지털 경험 산업 (지품/서비스/컨텐츠)"}]}]}, {"name": "개념", "children": [{"name": "HCI 1.0: 한 명의 사용자 - 컴퓨터 시스템 간 상호작용에서, 더 편리한 컴퓨터 시스템 설계 및 평가하는 분야"}, {"name": "HCI 2.0: 디지털 기술을 이용해 개인/집단의 사람들이 최적의 사용경험을 할 수 있는 방법/원리 연구하는 분야"}]}, {"name": "중요성", "children": [{"name": "**대중화**: 컴퓨터의 대중화 (전문가용 -> 일반인용)"}, {"name": "**소형화**: 몸통 둘레 크기 -> 손바닥 크기"}, {"name": "**사업성**: 고정 공간 -> 이동 공간 -> 광범위 영역의 산업화"}, {"name": "**심각성**: 기술 수준의 상향 평준화 -> 기술 그 자체 외의 요소 중요성 대두"}]}, {"name": "구성 요소(연구 범위)", "children": [{"name": "User Experience[목표]", "children": [{"name": "정의: 일상생활에서 사람들이 컴퓨터와 상호작용하면서 사람들 속에 추적하게 되는 모든 지식/기억/감정"}, {"name": "의미: 제품 사용 저누/중/후에 일어나는 정서적/신체적/기억 반응"}, {"name": "특징", "children": [{"name": "주관성: 같은 제품 상이한 경험"}, {"name": "총체성: 경험 그 자체는 직접적으로(direct) 조작 X, 경험 촉발은 가능"}, {"name": "정황성(contextuality): 경험은 interaction 발생 시점의 환경/맥락에도 영향 O"}]}]}, {"name": "User Interaction[행동]", "children": [{"name": "정의: 입출력 장치를 매개로 디지털 시스템과 사람이 주고 받는 일련의 의사소통 과정"}, {"name": "의미: 사람의 행동과 이에 반응하는 시스템의 절차를 설계하는 것"}, {"name": "의의1: HCI 맥락에서 사용자에게 최적의 경험을 제공하는 기본 단위"}, {"name": "의의2: Interface + Interaction +Experience를 포괄하는 전반적 상호작용"}]}, {"name": "User Interface[도구]", "children": [{"name": "정의: 디지털 시스템 입출력 장치"}, {"name": "특징: 상대적으로 짧은 사용자와의 접촉 시간"}]}]}, {"name": "목표: 최적의 경험 (Optimal User Experience)", "children": [{"name": "중독: 쉽사리 끝내지 못함"}, {"name": "몰입: 다른 경험에 신경 쓸 틈 없음"}, {"name": "관심: 관련 제품군/산업 등에 관심 확장"}]}, {"name": "원리", "children": [{"name": "유용성(Usefulness)", "children": [{"name": "정의: 사람들이 시스템을 이용해 하고자 하는 일을 효과적으로 달성할 수 있어야 함"}]}, {"name": "사용성(Usability)", "children": [{"name": "정의: 디지털 제품이나 서비스를 사용하는 과정이 쉽고 편리해야 함"}]}, {"name": "감성(Affect)", "children": [{"name": "정의: 시스템을 사용하면서 사람들이 마음속에서 얼마나 적절한 느낌을 받았는가 하는 정도"}]}]}]};
+
+const root = d3.hierarchy(data);
+const dx = 10;
+const dy = 180;
+const tree = d3.tree().nodeSize([dx * 5, dy]);
+const diagonal = d3.linkHorizontal().x(function(d) { return d.y; }).y(function(d) { return d.x; });
+
+const rootTree = tree(root);
+
+const svg = d3.select("svg")
+  .attr("viewBox", [0, 0, 1000, rootTree.height * dx + 200])
+  .attr("width", "100%")
+  .attr("height", "100%");
+
+const g = svg.append("g").attr("transform", "translate(40,40)");
+
+const link = g.append("g")
+  .attr("fill", "none")
+  .attr("stroke", "#ccc")
+  .attr("stroke-opacity", 0.6)
+  .attr("stroke-width", 1.5)
+.selectAll("path")
+.data(root.links())
+.join("path")
+  .attr("d", diagonal);
+
+const node = g.append("g")
+  .attr("stroke-linejoin", "round")
+  .attr("stroke-width", 3)
+.selectAll("g")
+.data(root.descendants())
+.join("g")
+  .attr("transform", function(d) { return `translate(${d.y},${d.x})`; });
+
+node.append("circle")
+  .attr("fill", function(d) { return d.children ? "#555" : "#999"; })
+  .attr("r", 4);
+
+node.append("text")
+  .attr("dy", "0.31em")
+  .attr("x", function(d) { return d.children ? -6 : 6; })
+  .attr("text-anchor", function(d) { return d.children ? "end" : "start"; })
+  .text(function(d) { return d.data.name; })
+  .clone(true).lower()
+  .attr("stroke", "white");
+</script>
+</body>
