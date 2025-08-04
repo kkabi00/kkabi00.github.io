@@ -22,7 +22,7 @@
     const g = svg.call(d3.zoom().on("zoom", e=>g.attr("transform",e.transform)))
                   .append("g");
 
-    const tree = d3.tree().size([height-100, width-200]);
+    const tree = d3.tree().size([height-3000, width-3000]);
     const tooltip = d3.select("body").append("div")
                       .attr("class","tooltip").style("opacity",0);
 
