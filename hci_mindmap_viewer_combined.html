@@ -146,8 +146,8 @@
         // x 좌표는 음수도 나올 수 있으니
         const neededHeight = maxX - minX + 40;
         svg.attr("height", neededHeight);
-        // 그룹을 음수 minX 만큼 올려서 상단 마진 확보
-        g.attr("transform", `translate(0,${20 - minX})`);
+        <!-- // 그룹을 음수 minX 만큼 올려서 상단 마진 확보
+        g.attr("transform", `translate(0,${20 - minX})`); -->
 
         // 좌표 저장
         nodes.forEach(d=>{ d.x0=d.x; d.y0=d.y; });
