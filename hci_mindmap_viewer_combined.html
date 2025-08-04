@@ -6,19 +6,41 @@
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden }
     svg         { display:block; width:100%; height:100% }
-    /* 기본 노드 스타일 (leaf가 아닌 노드) */
     .node circle{ fill:#fff; stroke:steelblue; stroke-width:1.5px }
     .node text  { font:12px sans-serif; fill:#333 }
     .link       { fill:none; stroke:#ccc; stroke-width:1.5px }
+    /* 툴팁 스타일 */
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      opacity: 0;
+      transition: opacity 0.1s ease-out;
+      white-space: nowrap;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
   <svg></svg>
+  <!-- 툴팁 요소 하나만 -->
+  <div class="tooltip"></div>
+
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
     const svg    = d3.select("svg"),
           width  = window.innerWidth,
           height = window.innerHeight;
+
+    // 툴팁 셀렉션
+    const tooltip = d3.select(".tooltip");
 
     const g = svg.call(
       d3.zoom().on("zoom", e => g.attr("transform", e.transform))
@@ -38,11 +60,11 @@
       const root = d3.hierarchy(data);
       let idx = 0;
 
-      // 첫 로드시 챕터(1단계)만 펼치고 나머지 다 접기
+      // 처음엔 1단계(챕터)만 펼치고 나머지 접기
       root.children && root.children.forEach(collapseAll);
-
       root.x0 = height/2;
       root.y0 = 0;
+
       update(root);
 
       function update(source) {
@@ -52,7 +74,7 @@
 
         nodes.forEach(d => d.y = d.depth * 180);
 
-        // ▶ Nodes
+        // NODE JOIN
         const nodeSel = g.selectAll("g.node")
           .data(nodes, d => d.id || (d.id = ++idx));
 
@@ -67,6 +89,7 @@
           .attr("class","node")
           .attr("transform", `translate(${source.y0},${source.x0})`)
           .on("click", (e,d) => {
+            // 한 단계 토글
             if (d.children) {
               d._children = d.children;
               d.children  = null;
@@ -75,12 +98,27 @@
               d._children = null;
             }
             update(d);
+          })
+          .on("mouseover", (e,d) => {
+            tooltip
+              .style("opacity", 1)
+              .html(d.data.name)
+              .style("left",  (e.pageX + 12) + "px")
+              .style("top",   (e.pageY - 28) + "px");
+          })
+          .on("mousemove", (e) => {
+            // 마우스가 이동해도 툴팁을 따라다니게
+            tooltip
+              .style("left", (e.pageX + 12) + "px")
+              .style("top",  (e.pageY - 28) + "px");
+          })
+          .on("mouseout", () => {
+            tooltip.style("opacity", 0);
           });
 
-        // 오직 하나의 circle append
+        // circle (한 번만 append)
         nodeEnter.append("circle")
           .attr("r", 1e-6)
-          // fill/stroke 둘 다 style 로 주면 CSS보다 우선 적용됩니다.
           .style("stroke", "steelblue")
           .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
 
@@ -90,17 +128,16 @@
           .attr("text-anchor", d => d._children ? "end" : "start")
           .text(d => d.data.name);
 
-        // ENTER + UPDATE 병합
+        // ENTER + UPDATE
         const nodeMerge = nodeEnter.merge(nodeSel);
         nodeMerge.transition().duration(300)
           .attr("transform", d => `translate(${d.y},${d.x})`);
         nodeMerge.select("circle")
           .transition().duration(300)
             .attr("r", 5)
-            // 클릭 후 children/_children 상태가 바뀔 때마다 fill 도 업데이트
             .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
 
-        // ▶ Links
+        // LINK JOIN
         const linkSel = g.selectAll("path.link")
           .data(links, d => d.target.id);
 
@@ -117,10 +154,9 @@
           .attr("class","link")
           .attr("d", d3.linkHorizontal()
             .x(_=> source.y0)
-            .y(_=> source.x0)
-          );
+            .y(_=> source.x0));
 
-        // ENTER + UPDATE 병합
+        // ENTER + UPDATE
         linkEnter.merge(linkSel)
           .transition().duration(300)
             .attr("d", d3.linkHorizontal()
