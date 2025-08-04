@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>HCI Mindmap Viewer (Subtree Collapse/Expand)</title>
+  <title>HCI Mindmap Viewer (Full Subtree Toggle)</title>
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -14,19 +14,27 @@
       width: 100vw; height: 100vh;
     }
     .node circle {
-      fill: #fff; stroke: steelblue; stroke-width: 1.5px;
+      fill: #fff;
+      stroke: steelblue;
+      stroke-width: 1.5px;
     }
     .node text {
-      font-size: 12px; fill: #333;
+      font-size: 12px;
+      fill: #333;
     }
     .link {
-      fill: none; stroke: #ccc; stroke-width: 1.5px;
+      fill: none;
+      stroke: #ccc;
+      stroke-width: 1.5px;
     }
     .tooltip {
-      position: absolute; padding: 4px 8px;
+      position: absolute;
+      padding: 4px 8px;
       background: rgba(255,255,255,0.9);
-      border: 1px solid #aaa; border-radius: 4px;
-      pointer-events: none; font-size: 12px;
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      pointer-events: none;
+      font-size: 12px;
       opacity: 0;
     }
   </style>
@@ -36,37 +44,44 @@
   <div class="tooltip"></div>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
-    // 1) 기본 세팅
-    const svg    = d3.select("svg"),
-          tooltip= d3.select(".tooltip"),
-          width  = window.innerWidth,
-          height = window.innerHeight;
+    // ── 0) 유틸리티 함수: 전체 서브트리 접기/펼치기 ──
+    function collapseAll(node) {
+      if (node.children) {
+        node.children.forEach(collapseAll);
+        node._children = node.children;
+        node.children = null;
+      }
+    }
+    function expandAll(node) {
+      if (node._children) {
+        node.children = node._children;
+        node._children = null;
+        node.children.forEach(expandAll);
+      }
+    }
 
-    // 그룹 + 줌/패닝
-    const g = svg.call(
-      d3.zoom()
-        .scaleExtent([0.5, 4])
-        .on("zoom", (e) => g.attr("transform", e.transform))
-    ).append("g");
+    // ── 1) 기본 SVG/줌/그룹 세팅 ──
+    const svg     = d3.select("svg"),
+          tooltip = d3.select(".tooltip"),
+          width   = window.innerWidth,
+          height  = window.innerHeight;
 
-    // 트리 레이아웃
+    const zoomBehavior = d3.zoom()
+      .scaleExtent([0.5, 4])
+      .on("zoom", (e) => g.attr("transform", e.transform));
+
+    const g = svg
+      .call(zoomBehavior)
+      .append("g");
+
     const tree = d3.tree().size([height - 100, width - 200]);
 
-    // JSON 로드
+    // ── 2) JSON 로드 & 초기 collapse-on-load ──
     d3.json("assets/hci_mindmap_combined.json").then(data => {
       const root = d3.hierarchy(data);
-      let idCounter = 0;
+      let nodeId = 0;
 
-      // ── 2) 전체 서브트리 접기 함수 ──
-      function collapseAll(node) {
-        if (node.children) {
-          node.children.forEach(collapseAll);
-          node._children = node.children;
-          node.children = null;
-        }
-      }
-
-      // 초기 로드 시 depth > 1 이하 전부 접기
+      // depth > 1 이하를 모두 접어 두기
       root.children && root.children.forEach(collapseAll);
 
       root.x0 = height / 2;
@@ -80,39 +95,32 @@
               nodes    = treeData.descendants(),
               links    = treeData.links();
 
-        // x축 간격(depth)
+        // depth 당 가로 간격
         nodes.forEach(d => d.y = d.depth * 180);
 
-        // **NODE**
+        // ---- NODE 처리 ----
         const nodeSel = g.selectAll("g.node")
-          .data(nodes, d => d.id || (d.id = ++idCounter));
+          .data(nodes, d => d.id || (d.id = ++nodeId));
 
+        // enter
         const nodeEnter = nodeSel.enter().append("g")
           .attr("class", "node")
           .attr("transform", `translate(${source.y0},${source.x0})`)
-          .on("click", (event, d) => {
-            if (d.children) {
-              // 펼쳐진 전체 서브트리 접기
-              collapseAll(d);
-            } else {
-              // 접힌 상태 → 전체 서브트리 펼치기
-              function expandAll(nd) {
-                if (nd._children) {
-                  nd.children = nd._children;
-                  nd._children = null;
-                  nd.children.forEach(expandAll);
-                }
-              }
+          .on("click", (e, d) => {
+            // 전체 서브트리 토글
+            if (d._children) {
               expandAll(d);
+            } else {
+              collapseAll(d);
             }
             update(d);
           })
-          .on("mouseover", (event, d) => {
+          .on("mouseover", (e, d) => {
             tooltip
               .style("opacity", 1)
               .html(d.data.name)
-              .style("left", (event.pageX + 10) + "px")
-              .style("top",  (event.pageY - 20) + "px");
+              .style("left", (e.pageX + 10) + "px")
+              .style("top",  (e.pageY - 20) + "px");
           })
           .on("mouseout", () => {
             tooltip.style("opacity", 0);
@@ -126,16 +134,15 @@
           .attr("text-anchor", d => d._children ? "end" : "start")
           .text(d => d.data.name);
 
-        // 노드 업데이트
+        // update + transition
         const nodeUpdate = nodeEnter.merge(nodeSel);
         nodeUpdate.transition().duration(300)
           .attr("transform", d => `translate(${d.y},${d.x})`);
-
         nodeUpdate.select("circle")
           .transition().duration(300)
           .attr("r", 5);
 
-        // **LINK**
+        // ---- LINK 처리 ----
         const linkSel = g.selectAll("path.link")
           .data(links, d => d.target.id);
 
@@ -162,7 +169,7 @@
     })
     .catch(err => {
       console.error("JSON 로딩 에러:", err);
-      alert("JSON 파일을 불러오지 못했습니다.");
+      alert("JSON을 불러오지 못했습니다.");
     });
   </script>
 </body>
