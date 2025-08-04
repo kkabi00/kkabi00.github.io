@@ -6,6 +6,7 @@
   <style>
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden }
     svg         { display:block; width:100%; height:100% }
+    /* 기본 노드 스타일 (leaf가 아닌 노드) */
     .node circle{ fill:#fff; stroke:steelblue; stroke-width:1.5px }
     .node text  { font:12px sans-serif; fill:#333 }
     .link       { fill:none; stroke:#ccc; stroke-width:1.5px }
@@ -25,49 +26,47 @@
 
     const tree = d3.tree().size([height - 100, width - 200]);
 
-    // ── 1) 재귀적 collapse 함수 ──
     function collapseAll(node) {
       if (node.children) {
         node.children.forEach(collapseAll);
         node._children = node.children;
-        node.children  = null;
+        node.children = null;
       }
     }
 
-    // ── 2) JSON 로드 & 초기 collapse-on-load ──
     d3.json("assets/hci_mindmap_combined.json").then(data => {
       const root = d3.hierarchy(data);
       let idx = 0;
 
-      // 루트의 직계 자식(챕터)만 남기고 다 접기
+      // 첫 로드시 챕터(1단계)만 펼치고 나머지 다 접기
       root.children && root.children.forEach(collapseAll);
 
-      root.x0 = height/2; 
+      root.x0 = height/2;
       root.y0 = 0;
       update(root);
 
-      // ── 3) update 함수 ──
       function update(source) {
         const treeData = tree(root),
               nodes    = treeData.descendants(),
               links    = treeData.links();
 
-        // depth 당 간격
         nodes.forEach(d => d.y = d.depth * 180);
 
-        // === Nodes ===
+        // ▶ Nodes
         const nodeSel = g.selectAll("g.node")
           .data(nodes, d => d.id || (d.id = ++idx));
 
-        // EXIT: 사라지는 노드 제거
-        nodeSel.exit().remove();
+        // EXIT
+        nodeSel.exit()
+          .transition().duration(200)
+            .attr("transform", `translate(${source.y},${source.x})`)
+            .remove();
 
         // ENTER
         const nodeEnter = nodeSel.enter().append("g")
           .attr("class","node")
           .attr("transform", `translate(${source.y0},${source.x0})`)
           .on("click", (e,d) => {
-            // 한 단계 토글
             if (d.children) {
               d._children = d.children;
               d.children  = null;
@@ -78,33 +77,40 @@
             update(d);
           });
 
-        nodeEnter.append("circle").attr("r", 1e-6);
+        // 오직 하나의 circle append
         nodeEnter.append("circle")
-        .attr("r", 1e-6)
-        .attr("fill", d => (d.children || d._children) ? "#fff" : "steelblue")
-        .attr("stroke", "steelblue");
+          .attr("r", 1e-6)
+          // fill/stroke 둘 다 style 로 주면 CSS보다 우선 적용됩니다.
+          .style("stroke", "steelblue")
+          .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
+
         nodeEnter.append("text")
           .attr("dy", ".35em")
           .attr("x", d => d._children ? -10 : 10)
           .attr("text-anchor", d => d._children ? "end" : "start")
           .text(d => d.data.name);
 
-        // ENTER + UPDATE
+        // ENTER + UPDATE 병합
         const nodeMerge = nodeEnter.merge(nodeSel);
         nodeMerge.transition().duration(300)
           .attr("transform", d => `translate(${d.y},${d.x})`);
         nodeMerge.select("circle")
           .transition().duration(300)
-          .attr("r", 5)
-          .attr("fill", d => (d.children || d._children) ? "#fff" : "steelblue")
-          ;
+            .attr("r", 5)
+            // 클릭 후 children/_children 상태가 바뀔 때마다 fill 도 업데이트
+            .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
 
-        // === Links ===
+        // ▶ Links
         const linkSel = g.selectAll("path.link")
           .data(links, d => d.target.id);
 
-        // EXIT: 사라지는 링크 제거
-        linkSel.exit().remove();
+        // EXIT
+        linkSel.exit()
+          .transition().duration(200)
+            .attr("d", d3.linkHorizontal()
+              .x(_=> source.y)
+              .y(_=> source.x))
+            .remove();
 
         // ENTER
         const linkEnter = linkSel.enter().insert("path","g")
@@ -114,17 +120,17 @@
             .y(_=> source.x0)
           );
 
-        // ENTER + UPDATE
+        // ENTER + UPDATE 병합
         linkEnter.merge(linkSel)
           .transition().duration(300)
-          .attr("d", d3.linkHorizontal()
-            .x(d=> d.y)
-            .y(d=> d.x)
-          );
+            .attr("d", d3.linkHorizontal()
+              .x(d=> d.y)
+              .y(d=> d.x)
+            );
 
-        // 이전 좌표 저장
+        // 좌표 초기화
         nodes.forEach(d => {
-          d.x0 = d.x; 
+          d.x0 = d.x;
           d.y0 = d.y;
         });
       }
