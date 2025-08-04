@@ -4,6 +4,18 @@
   <meta charset="UTF-8">
   <title>HCI Mindmap Viewer (Collapse-on-Load)</title>
   <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+    svg {
+      display: block;      /* 불필요한 여백 제거 */
+      width: 100vw;
+      height: 100vh;
+    }
+
     body { margin:0; overflow:hidden; font-family:sans-serif }
     .node circle { fill:#fff; stroke:steelblue; stroke-width:1.5px }
     .node text   { font-size:12px; fill:#333 }
@@ -22,7 +34,7 @@
     const g = svg.call(d3.zoom().on("zoom", e=>g.attr("transform",e.transform)))
                   .append("g");
 
-    const tree = d3.tree().size([height-3000, width-3000]);
+    const tree = d3.tree().size([height-100, width-200]);
     const tooltip = d3.select("body").append("div")
                       .attr("class","tooltip").style("opacity",0);
 
