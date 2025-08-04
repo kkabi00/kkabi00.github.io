@@ -2,137 +2,141 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>HCI Mindmap Viewer (One‐level Toggle + Clean Exit)</title>
+  <title>HCI Mindmap Viewer</title>
   <style>
-    html, body { margin:0; padding:0; width:100vw; height:100vh; overflow:hidden; }
-    svg         { display:block; width:100vw; height:100vh; }
-    .node circle{ fill:#fff; stroke:steelblue; stroke-width:1.5px; }
-    .node text  { font-size:12px; fill:#333; }
-    .link       { fill:none; stroke:#ccc; stroke-width:1.5px; }
-    .tooltip    { position:absolute; padding:4px 8px;
-                  background:rgba(255,255,255,0.9);
-                  border:1px solid #aaa; border-radius:4px;
-                  pointer-events:none; font-size:12px; opacity:0; }
+    body {
+      margin: 0; 
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    .node circle {
+      fill: #fff;
+      stroke: steelblue;
+      stroke-width: 1.5px;
+    }
+    .node text {
+      font-size: 12px;
+      fill: #333;
+    }
+    .link {
+      fill: none;
+      stroke: #ccc;
+      stroke-width: 1.5px;
+    }
+    .tooltip {
+      position: absolute;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #aaa;
+      border-radius: 4px;
+      pointer-events: none;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <svg></svg>
-  <div class="tooltip"></div>
+  <svg width="100%" height="100%"></svg>
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
-    const svg     = d3.select("svg"),
-          tooltip = d3.select(".tooltip"),
-          width   = window.innerWidth,
-          height  = window.innerHeight;
-
-    // 줌/패닝 세팅
-    const g = svg.call(
-      d3.zoom().scaleExtent([0.5,4]).on("zoom", e=>g.attr("transform", e.transform))
-    ).append("g");
-
-    const tree = d3.tree().size([height-100, width-200]);
-
-    d3.json("assets/hci_mindmap_combined.json").then(data => {
+    const width  = window.innerWidth;
+    const height = window.innerHeight;
+    const svg = d3.select("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .call(d3.zoom().on("zoom", (e) => g.attr("transform", e.transform)));
+    
+    const g = svg.append("g");
+    const tree = d3.tree().size([height - 100, width - 200]);
+    const tooltip = d3.select("body")
+      .append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+    
+    // JSON 파일 경로 (assets 내부 상대경로)
+    d3.json("assets/hci_mindmap_combined.json").then(function(data) {
       const root = d3.hierarchy(data);
-      let idCounter = 0;
+      let nodeId = 0;
+      root.x0 = height / 2;
+      root.y0 = 0;
+      
+      // 초기에는 모든 자식(_children) 접어두기
+      root.children && root.children.forEach(c => c._children = c.children);
 
-      // depth>1 접기
-      root.children && root.children.forEach(d=>d._children = d.children && d.children.splice(0));
-
-      root.x0 = height/2; root.y0 = 0;
       update(root);
 
       function update(source) {
-        const treeData = tree(root),
-              nodes    = treeData.descendants(),
-              links    = treeData.links();
+        const treeData = tree(root);
+        const nodes = treeData.descendants();
+        const links = treeData.links();
 
-        // horizontal spacing
-        nodes.forEach(d=> d.y = d.depth * 180);
+        // 수평 간격(depth 당 180px)
+        nodes.forEach(d => d.y = d.depth * 180);
 
-        // --- NODE JOIN ---
-        const node = g.selectAll("g.node")
-          .data(nodes, d=> d.id || (d.id = ++idCounter));
+        // NODE
+        const nodeSel = g.selectAll("g.node")
+          .data(nodes, d => d.id || (d.id = ++nodeId));
 
-        // EXIT: 사라질 노드, 선 제거
-        node.exit()
-          .transition().duration(200)
-          .attr("transform", `translate(${source.y},${source.x})`)
-          .remove();
-
-        // ENTER
-        const nodeEnter = node.enter().append("g")
-          .attr("class","node")
+        const nodeEnter = nodeSel.enter().append("g")
+          .attr("class", "node")
           .attr("transform", `translate(${source.y0},${source.x0})`)
-          .on("click", (e,d) => {
-            // 한 단계만 토글
-            if (d.children) {
-              d._children = d.children;
-              d.children = null;
-            } else {
-              d.children = d._children;
-              d._children = null;
-            }
+          .on("click", function(event, d) {
+            // 접기/펼치기
+            d.children = d.children ? null : d._children;
             update(d);
           })
-          .on("mouseover", (e,d)=> {
-            tooltip.style("opacity",1)
-                   .html(d.data.name)
-                   .style("left",(e.pageX+10)+"px")
-                   .style("top",(e.pageY-20)+"px");
+          .on("mouseover", function(event, d) {
+            tooltip
+              .style("opacity", 1)
+              .html(d.data.name)
+              .style("left", (event.pageX + 10) + "px")
+              .style("top",  (event.pageY - 20) + "px");
           })
-          .on("mouseout", ()=>tooltip.style("opacity",0));
+          .on("mouseout", function() {
+            tooltip.style("opacity", 0);
+          });
 
-        nodeEnter.append("circle").attr("r",1e-6);
+        nodeEnter.append("circle").attr("r", 1e-6);
         nodeEnter.append("text")
-          .attr("dy",".35em")
-          .attr("x", d=> d._children ? -10 : 10)
-          .attr("text-anchor", d=> d._children ? "end":"start")
-          .text(d=> d.data.name);
+          .attr("dy", ".35em")
+          .attr("x", d => d._children ? -10 : 10)
+          .attr("text-anchor", d => d._children ? "end" : "start")
+          .text(d => d.data.name);
 
-        // ENTER + UPDATE
-        const nodeMerge = nodeEnter.merge(node);
-        nodeMerge.transition().duration(300)
-          .attr("transform", d=> `translate(${d.y},${d.x})`);
-        nodeMerge.select("circle")
+        // UPDATE
+        const nodeUpdate = nodeEnter.merge(nodeSel);
+        nodeUpdate.transition().duration(300)
+          .attr("transform", d => `translate(${d.y},${d.x})`);
+
+        nodeUpdate.select("circle")
           .transition().duration(300)
-          .attr("r",5);
+          .attr("r", 5);
 
-        // --- LINK JOIN ---
-        const link = g.selectAll("path.link")
-          .data(links, d=> d.target.id);
+        // LINK
+        const linkSel = g.selectAll("path.link")
+          .data(links, d => d.target.id);
 
-        // EXIT: 링크 제거
-        link.exit()
-          .transition().duration(200)
+        const linkEnter = linkSel.enter().insert("path", "g")
+          .attr("class", "link")
           .attr("d", d3.linkHorizontal()
-                         .x(_=> source.y)
-                         .y(_=> source.x))
-          .remove();
+            .x(d => source.y0)
+            .y(d => source.x0));
 
-        // ENTER
-        const linkEnter = link.enter().insert("path","g")
-          .attr("class","link")
-          .attr("d", d3.linkHorizontal()
-                         .x(_=> source.y0)
-                         .y(_=> source.x0));
-
-        // ENTER + UPDATE
-        linkEnter.merge(link)
+        // UPDATE + TRANSITION
+        linkEnter.merge(linkSel)
           .transition().duration(300)
           .attr("d", d3.linkHorizontal()
-                         .x(d=> d.y)
-                         .y(d=> d.x));
+            .x(d => d.y)
+            .y(d => d.x));
 
         // 이전 좌표 저장
-        nodes.forEach(d=>{
-          d.x0 = d.x; d.y0 = d.y;
+        nodes.forEach(d => {
+          d.x0 = d.x;
+          d.y0 = d.y;
         });
       }
-    })
-    .catch(err=>{
-      console.error("JSON 로딩 에러:", err);
-      alert("JSON을 불러오지 못했습니다.");
+    }).catch(err => {
+      console.error("JSON 로딩/파싱 에러:", err);
+      alert("JSON 파일을 불러오지 못했습니다. 경로를 확인해 주세요.");
     });
   </script>
 </body>
