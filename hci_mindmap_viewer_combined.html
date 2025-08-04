@@ -59,7 +59,7 @@
       .attr("class", "tooltip")
       .style("opacity", 0);
 
-    d3.json("https://kkabi00.github.io/hci_mindmap_combined.json").then(data => {{
+    d3.json("assets/hci_mindmap_combined.json").then(data => {{
       const root = d3.hierarchy(data);
       root.x0 = height / 2;
       root.y0 = 0;
