@@ -4,11 +4,34 @@
   <meta charset="UTF-8">
   <title>HCI Mindmap Viewer</title>
   <style>
-    html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden }
-    svg         { display:block; width:100%; height:100% }
-    .node circle{ fill:#fff; stroke:steelblue; stroke-width:1.5px }
-    .node text  { font:12px sans-serif; fill:#333 }
-    .link       { fill:none; stroke:#ccc; stroke-width:1.5px }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    /* SVG 높이는 auto 로 두면, 아래 JS에서 조정합니다 */
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .node circle {
+      /* 기본(비-리프) 채움 */
+      fill: #fff;
+      stroke: steelblue;
+      stroke-width: 1.5px;
+    }
+    .node text {
+      font: 12px sans-serif;
+      fill: #333;
+    }
+    .link {
+      fill: none;
+      stroke: #ccc;
+      stroke-width: 1.5px;
+    }
     /* 툴팁 스타일 */
     .tooltip {
       position: absolute;
@@ -30,7 +53,6 @@
 </head>
 <body>
   <svg></svg>
-  <!-- 툴팁 요소 하나만 -->
   <div class="tooltip"></div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -39,15 +61,15 @@
           width  = window.innerWidth,
           height = window.innerHeight;
 
-    // 툴팁 셀렉션
     const tooltip = d3.select(".tooltip");
 
     const g = svg.call(
-      d3.zoom().on("zoom", e => g.attr("transform", e.transform))
+      d3.zoom().scaleExtent([0.5,4]).on("zoom", e => g.attr("transform", e.transform))
     ).append("g");
 
     const tree = d3.tree().size([height - 100, width - 200]);
 
+    // 페이지 로드 시 모든 하위 노드 접기
     function collapseAll(node) {
       if (node.children) {
         node.children.forEach(collapseAll);
@@ -60,9 +82,9 @@
       const root = d3.hierarchy(data);
       let idx = 0;
 
-      // 처음엔 1단계(챕터)만 펼치고 나머지 접기
+      // 처음엔 챕터(1단계)만 펼치고 나머지 접기
       root.children && root.children.forEach(collapseAll);
-      root.x0 = height/2;
+      root.x0 = height / 2;
       root.y0 = 0;
 
       update(root);
@@ -72,19 +94,20 @@
               nodes    = treeData.descendants(),
               links    = treeData.links();
 
+        // depth 당 수평 간격
         nodes.forEach(d => d.y = d.depth * 180);
 
-        // NODE JOIN
+        // --- NODE JOIN ---
         const nodeSel = g.selectAll("g.node")
           .data(nodes, d => d.id || (d.id = ++idx));
 
-        // EXIT
+        // EXIT: 접힌 노드 제거
         nodeSel.exit()
           .transition().duration(200)
             .attr("transform", `translate(${source.y},${source.x})`)
             .remove();
 
-        // ENTER
+        // ENTER: 새 노드
         const nodeEnter = nodeSel.enter().append("g")
           .attr("class","node")
           .attr("transform", `translate(${source.y0},${source.x0})`)
@@ -107,7 +130,6 @@
               .style("top",   (e.pageY - 28) + "px");
           })
           .on("mousemove", (e) => {
-            // 마우스가 이동해도 툴팁을 따라다니게
             tooltip
               .style("left", (e.pageX + 12) + "px")
               .style("top",  (e.pageY - 28) + "px");
@@ -116,19 +138,20 @@
             tooltip.style("opacity", 0);
           });
 
-        // circle (한 번만 append)
+        // circle (leaf인지에 따라 채움 색 결정)
         nodeEnter.append("circle")
           .attr("r", 1e-6)
           .style("stroke", "steelblue")
           .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
 
+        // 텍스트
         nodeEnter.append("text")
           .attr("dy", ".35em")
           .attr("x", d => d._children ? -10 : 10)
           .attr("text-anchor", d => d._children ? "end" : "start")
           .text(d => d.data.name);
 
-        // ENTER + UPDATE
+        // ENTER + UPDATE 병합
         const nodeMerge = nodeEnter.merge(nodeSel);
         nodeMerge.transition().duration(300)
           .attr("transform", d => `translate(${d.y},${d.x})`);
@@ -137,7 +160,7 @@
             .attr("r", 5)
             .style("fill", d => (d.children || d._children) ? "#fff" : "steelblue");
 
-        // LINK JOIN
+        // --- LINK JOIN ---
         const linkSel = g.selectAll("path.link")
           .data(links, d => d.target.id);
 
@@ -163,6 +186,12 @@
               .x(d=> d.y)
               .y(d=> d.x)
             );
+
+        // ─── 여기서 SVG 높이를 콘텐츠에 맞춰 조정 ───
+        const maxX = d3.max(nodes, d => d.x) || height;
+        d3.select("svg")
+          .attr("height", maxX + 80);
+        // ────────────────────────────────────────────
 
         // 좌표 초기화
         nodes.forEach(d => {
